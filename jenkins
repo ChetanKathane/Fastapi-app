@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/ChetanKathane/Fastapi-app.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker-compose build'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh '''
+                    docker stop fastapi_container prometheus cadvisor grafana || true
+                    docker rm fastapi_container prometheus cadvisor grafana || true
+                    docker-compose down || true
+                    docker-compose up -d
+                '''
+            }
+        }
+        stage('Health Check') {
+            steps {
+                sh 'sleep 5'
+                sh 'curl -f http://13.206.68.12:8000/ || exit 1'
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed!'
+        }
+    }
+}
